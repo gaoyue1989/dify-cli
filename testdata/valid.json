@@ -1,0 +1,39 @@
+{
+  "env": {
+    "files_url": "http://test:5001",
+    "cli_api_url": "http://test:5001",
+    "cli_api_session_id": "sess-test-001",
+    "cli_api_secret": "sec-test-abc123"
+  },
+  "tool_references": [
+    {
+      "id": "abc12345-6789-0abc-def0-123456789abc",
+      "tool_type": "mcp",
+      "tool_name": "search_docs",
+      "tool_provider": "mcp_server_1",
+      "credential_id": "cred-001",
+      "default_value": {
+        "query": ""
+      }
+    },
+    {
+      "id": "def45678-9012-3def-4567-890123456def",
+      "tool_type": "builtin",
+      "tool_name": "web_reader",
+      "tool_provider": "web_reader"
+    },
+    {
+      "id": "aaa11111-2222-3333-4444-555555555555",
+      "tool_type": "api",
+      "tool_name": "weather_api",
+      "tool_provider": "weather_provider",
+      "credential_id": "cred-002"
+    },
+    {
+      "id": "bbb11111-2222-3333-4444-555555555555",
+      "tool_type": "workflow",
+      "tool_name": "my_workflow",
+      "tool_provider": "wf_provider"
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "env": {
+    "files_url": "http://test:5001",
+    "cli_api_url": "http://test:5001",
+    "cli_api_session_id": "sess-empty",
+    "cli_api_secret": "sec-empty"
+  },
+  "tool_references": []
+}
