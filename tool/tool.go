@@ -1,11 +1,13 @@
 package tool
 
 import (
+	"bytes"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"io"
+	"mime/multipart"
 	"net/http"
 	"os"
 	"strings"
@@ -508,15 +510,36 @@ func uploadFileToServer(filePath string, env *types.EnvConfig) (string, error) {
 }
 
 func uploadToSignedURL(signedURL, filePath, mimeType string) error {
-	data, err := os.ReadFile(filePath)
+	file, err := os.Open(filePath)
 	if err != nil {
-		return fmt.Errorf("failed to read file: %w", err)
+		return fmt.Errorf("failed to open file: %w", err)
+	}
+	defer file.Close()
+
+	info, err := file.Stat()
+	if err != nil {
+		return fmt.Errorf("failed to stat file: %w", err)
 	}
 
-	req, _ := http.NewRequest("PUT", signedURL, strings.NewReader(string(data)))
-	if mimeType != "" {
-		req.Header.Set("Content-Type", mimeType)
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+
+	part, err := writer.CreateFormFile("file", info.Name())
+	if err != nil {
+		return fmt.Errorf("failed to create form file: %w", err)
 	}
+	if _, err := io.Copy(part, file); err != nil {
+		return fmt.Errorf("failed to copy file data: %w", err)
+	}
+	if err := writer.Close(); err != nil {
+		return fmt.Errorf("failed to close multipart writer: %w", err)
+	}
+
+	req, err := http.NewRequest("POST", signedURL, body)
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+	req.Header.Set("Content-Type", writer.FormDataContentType())
 
 	client := &http.Client{Timeout: 300 * time.Second}
 	resp, err := client.Do(req)
@@ -526,8 +549,8 @@ func uploadToSignedURL(signedURL, filePath, mimeType string) error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode >= 400 {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("failed to upload file: status %d: %s", resp.StatusCode, string(body))
+		respBody, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("upload failed: status %d, body: %s", resp.StatusCode, string(respBody))
 	}
 
 	return nil
