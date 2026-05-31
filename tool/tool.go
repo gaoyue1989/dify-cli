@@ -18,7 +18,7 @@ import (
 
 func SignRequest(secret, method, path string, body []byte, sessionID string) (string, string) {
 	timestamp := fmt.Sprintf("%d", time.Now().Unix())
-	message := fmt.Sprintf("%s\n%s\n%d", method, path, time.Now().Unix())
+	message := fmt.Sprintf("%s.%s", timestamp, string(body))
 
 	mac := hmac.New(sha256.New, []byte(secret))
 	mac.Write([]byte(message))
