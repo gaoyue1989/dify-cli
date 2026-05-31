@@ -77,5 +77,5 @@ func FindToolReference(symlinkName string) (*types.ToolReference, error) {
 }
 
 func GetReferenceSymlinkName(ref types.ToolReference) string {
-	return fmt.Sprintf("%s_%s", ref.ToolName, ref.ID[:8])
+	return fmt.Sprintf("%s_%s", ref.ToolName, ref.ID)
 }

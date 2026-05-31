@@ -72,7 +72,7 @@ func TestConfigLoadNotFound(t *testing.T) {
 
 func TestConfigFindToolReference(t *testing.T) {
 	t.Setenv("DIFY_CLI_CONFIG", filepath.Join("testdata", "valid.json"))
-	ref, err := config.FindToolReference("search_docs_abc12345")
+	ref, err := config.FindToolReference("search_docs_abc12345-6789-0abc-def0-123456789abc")
 	if err != nil {
 		t.Fatalf("FindToolReference failed: %v", err)
 	}
@@ -81,6 +81,17 @@ func TestConfigFindToolReference(t *testing.T) {
 	}
 	if ref.ToolProvider != "mcp_server_1" {
 		t.Errorf("provider = %q, want mcp_server_1", ref.ToolProvider)
+	}
+}
+
+func TestConfigFindToolReferenceShortName(t *testing.T) {
+	t.Setenv("DIFY_CLI_CONFIG", filepath.Join("testdata", "valid.json"))
+	_, err := config.FindToolReference("search_docs_abc12345")
+	if err == nil {
+		t.Fatal("expected error for short-name symlink search")
+	}
+	if !strings.Contains(err.Error(), "tool reference not found") {
+		t.Errorf("unexpected error: %v", err)
 	}
 }
 
@@ -102,7 +113,7 @@ func TestConfigGetReferenceSymlinkName(t *testing.T) {
 		ToolType: "mcp",
 	}
 	name := config.GetReferenceSymlinkName(ref)
-	expected := "my_tool_abcdef12"
+	expected := "my_tool_abcdef12-3456-7890-abcd-ef1234567890"
 	if name != expected {
 		t.Errorf("symlink name = %q, want %q", name, expected)
 	}
@@ -536,7 +547,7 @@ func TestCLIInit(t *testing.T) {
 	}
 
 	for _, name := range []string{
-		"search_docs_abc12345",
+		"search_docs_abc12345-6789-0abc-def0-123456789abc",
 		"web_reader_def45678",
 		"weather_api_aaa11111",
 		"my_workflow_bbb11111",
@@ -582,7 +593,7 @@ func TestCLIList(t *testing.T) {
 	if !strings.Contains(out, "Available tools:") {
 		t.Errorf("list output missing header: %s", out)
 	}
-	if !strings.Contains(out, "search_docs_abc12345") {
+	if !strings.Contains(out, "search_docs_abc12345-6789-0abc-def0-123456789abc") {
 		t.Error("list output missing search_docs")
 	}
 	if !strings.Contains(out, "web_reader_def45678") {
@@ -646,7 +657,7 @@ func TestCLISymlinkDetection(t *testing.T) {
 	cmd.Dir = dir
 	cmd.Run()
 
-	symlinkPath := filepath.Join(dir, "search_docs_abc12345")
+	symlinkPath := filepath.Join(dir, "search_docs_abc12345-6789-0abc-def0-123456789abc")
 	cmd = exec.Command(symlinkPath, "--help")
 	cmd.Dir = dir
 	output, err := cmd.CombinedOutput()
@@ -671,7 +682,7 @@ func TestCLIDifyCliConfigEnv(t *testing.T) {
 	}
 
 	for _, name := range []string{
-		"search_docs_abc12345",
+		"search_docs_abc12345-6789-0abc-def0-123456789abc",
 		"web_reader_def45678",
 	} {
 		path := filepath.Join(dir, name)
@@ -689,7 +700,7 @@ func TestCLIExecuteMode(t *testing.T) {
 	cmd.Dir = dir
 	cmd.Run()
 
-	cmd = exec.Command(binPath, "execute", "search_docs_abc12345", "--query", "test")
+	cmd = exec.Command(binPath, "execute", "search_docs_abc12345-6789-0abc-def0-123456789abc", "--query", "test")
 	cmd.Dir = dir
 	output, err := cmd.CombinedOutput()
 	if err == nil {
