@@ -223,6 +223,13 @@ func Dispatch(ref *types.ToolReference, env *types.EnvConfig, params map[string]
 		return fmt.Errorf("API returned status %d: %s", resp.StatusCode, string(respBody))
 	}
 
+	// Strip length-prefixed response format:
+	// | Magic 1byte | Reserved 1byte | Header Length 2bytes | Data Length 4bytes | Reserved 6bytes | Data
+	// All numbers in little-endian. Total header = 14 bytes.
+	if len(respBody) > 14 && respBody[0] == 0x0f {
+		respBody = respBody[14:]
+	}
+
 	return processToolResponse(respBody)
 }
 
