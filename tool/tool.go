@@ -223,11 +223,23 @@ func Dispatch(ref *types.ToolReference, env *types.EnvConfig, params map[string]
 		return fmt.Errorf("API returned status %d: %s", resp.StatusCode, string(respBody))
 	}
 
-	// Strip length-prefixed response format:
-	// | Magic 1byte | Reserved 1byte | Header Length 2bytes | Data Length 4bytes | Reserved 6bytes | Data
-	// All numbers in little-endian. Total header = 14 bytes.
+	// Process length-prefixed response: each frame is:
+	// | Magic 1B | Reserved 1B | HeaderLen 2B | DataLen 4B (LE) | Reserved 6B | Data
+	// Total header = 14 bytes. Multiple frames may be concatenated.
 	if len(respBody) > 14 && respBody[0] == 0x0f {
-		respBody = respBody[14:]
+		var buf bytes.Buffer
+		remaining := respBody
+		for len(remaining) > 14 && remaining[0] == 0x0f {
+			dataLen := uint32(remaining[4]) | uint32(remaining[5])<<8 |
+				uint32(remaining[6])<<16 | uint32(remaining[7])<<24
+			dataEnd := 14 + int(dataLen)
+			if dataEnd > len(remaining) {
+				dataEnd = len(remaining)
+			}
+			buf.Write(remaining[14:dataEnd])
+			remaining = remaining[dataEnd:]
+		}
+		respBody = buf.Bytes()
 	}
 
 	return processToolResponse(respBody)
