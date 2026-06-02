@@ -535,15 +535,16 @@ func uploadFileToServer(filePath string, env *types.EnvConfig) (string, error) {
 		return "", err
 	}
 
-	// Return the uploaded file's preview URL, not the upload endpoint
+	// Return the uploaded file's ID (tool_file_id) for tool_file transfer method
+	if uploadResp.ID != "" {
+		return uploadResp.ID, nil
+	}
+	// Fallback to preview URL
 	if uploadResp.PreviewURL != "" {
 		return uploadResp.PreviewURL, nil
 	}
 	if uploadResp.SourceURL != "" {
 		return uploadResp.SourceURL, nil
-	}
-	if uploadResp.ID != "" {
-		return fmt.Sprintf("%s/files/%s/file-preview", env.FilesURL, uploadResp.ID), nil
 	}
 
 	return signedURL, nil
