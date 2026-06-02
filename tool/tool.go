@@ -226,9 +226,12 @@ func Dispatch(ref *types.ToolReference, env *types.EnvConfig, params map[string]
 	// Process length-prefixed response: each frame is:
 	// | Magic 1B | Reserved 1B | HeaderLen 2B | DataLen 4B (LE) | Reserved 6B | Data
 	// Total header = 14 bytes. Multiple frames may be concatenated.
+	// Wrap frame data as a JSON array for processToolResponse.
 	if len(respBody) > 14 && respBody[0] == 0x0f {
 		var buf bytes.Buffer
+		buf.WriteByte('[')
 		remaining := respBody
+		first := true
 		for len(remaining) > 14 && remaining[0] == 0x0f {
 			dataLen := uint32(remaining[4]) | uint32(remaining[5])<<8 |
 				uint32(remaining[6])<<16 | uint32(remaining[7])<<24
@@ -236,9 +239,14 @@ func Dispatch(ref *types.ToolReference, env *types.EnvConfig, params map[string]
 			if dataEnd > len(remaining) {
 				dataEnd = len(remaining)
 			}
+			if !first {
+				buf.WriteByte(',')
+			}
 			buf.Write(remaining[14:dataEnd])
 			remaining = remaining[dataEnd:]
+			first = false
 		}
+		buf.WriteByte(']')
 		respBody = buf.Bytes()
 	}
 
