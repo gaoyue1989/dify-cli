@@ -530,62 +530,86 @@ func uploadFileToServer(filePath string, env *types.EnvConfig) (string, error) {
 
 	signedURL := urlResp.Data.URL
 
-	if err := uploadToSignedURL(signedURL, filePath, mimeType); err != nil {
+	uploadResp, err := uploadToSignedURL(signedURL, filePath, mimeType)
+	if err != nil {
 		return "", err
+	}
+
+	// Return the uploaded file's preview URL, not the upload endpoint
+	if uploadResp.PreviewURL != "" {
+		return uploadResp.PreviewURL, nil
+	}
+	if uploadResp.SourceURL != "" {
+		return uploadResp.SourceURL, nil
+	}
+	if uploadResp.ID != "" {
+		return fmt.Sprintf("%s/files/%s/file-preview", env.FilesURL, uploadResp.ID), nil
 	}
 
 	return signedURL, nil
 }
 
-func uploadToSignedURL(signedURL, filePath, mimeType string) error {
+type uploadResponse struct {
+	ID         string `json:"id"`
+	Name       string `json:"name"`
+	Size       int64  `json:"size"`
+	MimeType   string `json:"mime_type"`
+	PreviewURL string `json:"preview_url"`
+	SourceURL  string `json:"source_url"`
+}
+
+func uploadToSignedURL(signedURL, filePath, mimeType string) (*uploadResponse, error) {
 	file, err := os.Open(filePath)
 	if err != nil {
-		return fmt.Errorf("failed to open file: %w", err)
+		return nil, fmt.Errorf("failed to open file: %w", err)
 	}
 	defer file.Close()
 
 	info, err := file.Stat()
 	if err != nil {
-		return fmt.Errorf("failed to stat file: %w", err)
+		return nil, fmt.Errorf("failed to stat file: %w", err)
 	}
 
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
 
-	// Create a custom part with the correct MIME type (must match the signature)
 	h := make(textproto.MIMEHeader)
 	h.Set("Content-Disposition", fmt.Sprintf(`form-data; name="%s"; filename="%s"`, "file", info.Name()))
 	h.Set("Content-Type", mimeType)
 	part, err := writer.CreatePart(h)
 	if err != nil {
-		return fmt.Errorf("failed to create form file: %w", err)
+		return nil, fmt.Errorf("failed to create form file: %w", err)
 	}
 	if _, err := io.Copy(part, file); err != nil {
-		return fmt.Errorf("failed to copy file data: %w", err)
+		return nil, fmt.Errorf("failed to copy file data: %w", err)
 	}
 	if err := writer.Close(); err != nil {
-		return fmt.Errorf("failed to close multipart writer: %w", err)
+		return nil, fmt.Errorf("failed to close multipart writer: %w", err)
 	}
 
 	req, err := http.NewRequest("POST", signedURL, body)
 	if err != nil {
-		return fmt.Errorf("failed to create request: %w", err)
+		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 
 	client := &http.Client{Timeout: 300 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
-		return fmt.Errorf("failed to upload file: %w", err)
+		return nil, fmt.Errorf("failed to upload file: %w", err)
 	}
 	defer resp.Body.Close()
 
+	respBody, _ := io.ReadAll(resp.Body)
 	if resp.StatusCode >= 400 {
-		respBody, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("upload failed: status %d, body: %s", resp.StatusCode, string(respBody))
+		return nil, fmt.Errorf("upload failed: status %d, body: %s", resp.StatusCode, string(respBody))
 	}
 
-	return nil
+	var result uploadResponse
+	if err := json.Unmarshal(respBody, &result); err != nil {
+		return &uploadResponse{}, nil
+	}
+	return &result, nil
 }
 
 func detectMimeType(filePath string) string {
