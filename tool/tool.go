@@ -535,13 +535,12 @@ func uploadFileToServer(filePath string, env *types.EnvConfig) (string, error) {
 		return "", err
 	}
 
-	// Return the uploaded file's ID (tool_file_id) for tool_file transfer method
-	if uploadResp.ID != "" {
-		return uploadResp.ID, nil
-	}
-	// Fallback to preview URL
+	// Return the uploaded file's preview URL for remote_url transfer method
 	if uploadResp.PreviewURL != "" {
 		return uploadResp.PreviewURL, nil
+	}
+	if uploadResp.ID != "" {
+		return fmt.Sprintf("%s/files/tools/%s.txt", env.FilesURL, uploadResp.ID), nil
 	}
 	if uploadResp.SourceURL != "" {
 		return uploadResp.SourceURL, nil
